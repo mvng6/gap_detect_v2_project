@@ -6,42 +6,6 @@
 // "방아쇠"가 당겨지면(메시지가 오면) 실행될 함수
 // msg: 수신된 토픽 메시지 (e.g., 1)
 // client: 두산 로봇 서비스에 연결된 "전화기"
-// void commandCallback(const std_msgs::Int32::ConstPtr& msg, ros::ServiceClient& client)
-// {
-//     // 메시지 값이 1일 때만 작동
-//     if (msg->data == 1)
-//     {
-//         ROS_INFO("Trigger message '1' received. Calling move_joint service...");
-
-//         // 1. 서비스 메시지(총알) 준비
-//         dsr_msgs::MoveJoint srv;
-
-//         // 2. 총알 장전 (사용자님이 원하는 관절 각도)
-//         // C++ std::vector를 사용하여 6개의 각도(Degree)를 설정합니다.
-//         srv.request.pos = {90.0, 0.0, 90.0, 0.0, 90.0, -90.0};
-        
-//         // 기타 파라미터 설정 (속도, 가속도 등)
-//         srv.request.vel = 30.0;
-//         srv.request.acc = 60.0;
-//         srv.request.mode = 0; // 0: MOVE_MODE_ABSOLUTE
-
-//         // 3. 서비스 호출 ("발사")
-//         if (client.call(srv))
-//         {
-//             // 성공 응답 확인
-//             if(srv.response.success) {
-//                 ROS_INFO("Service call successful: Robot moved.");
-//             } else {
-//                 ROS_WARN("Service call reported failure.");
-//             }
-//         }
-//         else
-//         {
-//             ROS_ERROR("Failed to call service /dsr01a0912/motion/move_joint");
-//         }
-//     }
-// }
-
 void commandCallback(const std_msgs::Int32::ConstPtr& msg, ros::ServiceClient& client)
 {
     // 서비스 메시지(총알) 준비
