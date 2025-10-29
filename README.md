@@ -121,7 +121,7 @@ rosrun doosan_helper move_robot_node
 source /root/catkin_ws/devel/setup.bash
 
 # 토픽 발행 (메시지: 1)
-rostopic pub /katech/robot_command std_msgs/Int32 "data: 1" -1
+rosrun doosan_helper trigger_zero_node
 ```
 - 자세 2 ([-90, 0, 90, 0, 90, -90]) 실행:
 ```bash
@@ -130,7 +130,17 @@ rostopic pub /katech/robot_command std_msgs/Int32 "data: 1" -1
 source /root/catkin_ws/devel/setup.bash
 
 # 토픽 발행 노드 실행 (메시지: 0)
-rosrun doosan_helper trigger_zero_node
+rosrun doosan_helper trigger_one_node
+```
+
+- 자세 3 ([0, 0, 0, 0, 0, 0]) 실행:
+```bash
+# (작업실 터미널 3)
+# 먼저 환경 활성화
+source /root/catkin_ws/devel/setup.bash
+
+# 토픽 발행 노드 실행 (메시지: 0)
+rosrun doosan_helper trigger_home_node
 ```
 
 결과: 터미널 3에서 명령을 실행할 때마다, 터미널 2에 해당 로그가 출력되고 실제 로봇이 지정된 자세로 이동합니다.
