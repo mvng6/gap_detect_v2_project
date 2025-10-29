@@ -119,7 +119,7 @@ rostopic pub /mobile_robot/move_distance std_msgs/Float32 "data: 0.5"
 
 ## 🛠️ 시스템 요구사항
 
-- **OS**: Ubuntu 20.04 / 22.04
+- **OS**: Ubuntu 20.04
 - **ROS**: ROS 1 Noetic
 - **Python**: 3.8+
 - **로봇**: Woosh TR200
@@ -210,7 +210,7 @@ asyncio.run(main())
 ## 📞 지원
 
 ### 문의
-- **이메일**: robotics@katech.re.kr
+- **이메일**: djlee2@katech.re.kr
 - **GitHub**: [robot_ws/issues](https://github.com/katech/robot_ws/issues)
 
 ### 기여
