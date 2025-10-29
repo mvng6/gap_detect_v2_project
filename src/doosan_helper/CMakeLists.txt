@@ -136,7 +136,6 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/doosan_helper_node.cpp)
 
 add_executable(move_robot_node src/move_robot_node.cpp)
-# add_executable(move_robot_reverse_node src/move_robot_reverse_node.cpp)
 add_executable(trigger_home_node src/trigger_home_node.cpp)
 add_executable(trigger_zero_node src/trigger_zero_node.cpp)
 add_executable(trigger_one_node src/trigger_one_node.cpp)
