@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<!--
+  Mobile-Cobot Collaboration Launch File
+  
+  이 launch 파일은 모바일 로봇과 협동로봇 간의 순차적 협업을 실행합니다.
+  
+  실행 순서:
+  1. move_robot_node: 협동로봇 제어 노드 (서비스 대기)
+  2. cobot_coordinator_node: 협업 코디네이터 노드
+  3. mobile_robot_control_node: 모바일 로봇 제어 (수동 실행 필요)
+  
+  사용법:
+    roslaunch doosan_helper mobile_cobot_collaboration.launch
+    
+  그 다음 별도 터미널에서 모바일 로봇 노드 실행:
+    cd /home/katech/robot_ws/src/mobile_robot_control/src
+    python3 mobile_robot_control_node.py --distance 1.0 --speed 0.2
+-->
+<launch>
+  <!-- ==================== 파라미터 설정 ==================== -->
+  
+  <!-- 모바일 로봇 설정 -->
+  <arg name="mobile_ip" default="169.254.128.2" />
+  <arg name="mobile_port" default="5480" />
+  
+  <!-- 협동로봇 설정 -->
+  <arg name="velocity_threshold" default="0.01" doc="모바일 로봇 정지 판단 임계값 (m/s)" />
+  <arg name="position_tolerance" default="0.02" doc="관절 위치 허용 오차 (rad, 약 1도)" />
+  <arg name="stability_duration" default="1.0" doc="정지 안정화 시간 (초)" />
+  <arg name="robot_command" default="0" doc="협동로봇에 전송할 명령 (0: 자세1)" />
+  
+  <!-- ==================== 노드 실행 ==================== -->
+  
+  <!-- 1. 협동로봇 제어 노드 (move_robot_node) -->
+  <node name="move_robot_node" pkg="doosan_helper" type="move_robot_node" output="screen">
+    <remap from="/katech/robot_command" to="/katech/robot_command" />
+  </node>
+  
+  <!-- 2. 협업 코디네이터 노드 -->
+  <node name="cobot_coordinator" pkg="doosan_helper" type="cobot_coordinator_node" output="screen">
+    <!-- 파라미터 전달 -->
+    <param name="velocity_threshold" value="$(arg velocity_threshold)" />
+    <param name="position_tolerance" value="$(arg position_tolerance)" />
+    <param name="stability_duration" value="$(arg stability_duration)" />
+    <param name="robot_command" value="$(arg robot_command)" />
+    
+    <!-- 토픽 리매핑 (필요시) -->
+    <remap from="/katech/mobile_ready" to="/katech/mobile_ready" />
+    <remap from="/katech/cobot_done" to="/katech/cobot_done" />
+    <remap from="/katech/robot_command" to="/katech/robot_command" />
+  </node>
+  
+  <!-- ==================== 정보 출력 ==================== -->
+  <node name="collaboration_info" pkg="rostopic" type="rostopic" 
+        args="echo /katech/mobile_ready" output="screen" launch-prefix="bash -c 'sleep 2; $0 $@' " />
+
+</launch>
+

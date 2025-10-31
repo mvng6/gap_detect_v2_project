@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<!--
+  Doosan Robot Control Launch File
+  
+  이 launch 파일은 두산로봇 제어 노드를 실행합니다.
+  기존 dsr_launcher와 함께 사용하거나 독립적으로 실행할 수 있습니다.
+  
+  사용 예시:
+    # 기본 실행 (A0912, Real 모드)
+    roslaunch doosan_robot_control doosan_robot_control.launch
+    
+    # 모델 및 IP 지정
+    roslaunch doosan_robot_control doosan_robot_control.launch \
+      model:=m1013 host:=192.168.1.100
+    
+    # Virtual 모드 (시뮬레이션)
+    roslaunch doosan_robot_control doosan_robot_control.launch mode:=virtual
+    
+    # dsr_control과 함께 실행
+    roslaunch doosan_robot_control doosan_robot_with_dsr.launch
+-->
+
+<launch>
+  <!-- ==================== Arguments ==================== -->
+  
+  <!-- 로봇 식별자 및 모델 -->
+  <arg name="robot_id" default="dsr01" 
+       doc="로봇 네임스페이스 (예: dsr01)"/>
+  
+  <arg name="model" default="a0912" 
+       doc="로봇 모델 (a0509, a0912, m0609, m0617, m1013, m1509, h2017, h2515, e0509)"/>
+  
+  <!-- 연결 설정 -->
+  <arg name="host" default="192.168.137.100" 
+       doc="로봇 IP 주소"/>
+  
+  <arg name="port" default="12345" 
+       doc="로봇 포트 번호"/>
+  
+  <arg name="mode" default="real" 
+       doc="동작 모드 (real: 실제 로봇, virtual: 시뮬레이션)"/>
+  
+  <!-- 제어 설정 -->
+  <arg name="control_rate" default="10.0" 
+       doc="제어 루프 주기 (Hz)"/>
+  
+  <arg name="connection_timeout" default="30.0" 
+       doc="연결 타임아웃 (초)"/>
+  
+  <!-- 데모 모드 -->
+  <arg name="run_demo" default="false" 
+       doc="데모 동작 실행 여부 (true/false)"/>
+  
+  <!-- 출력 설정 -->
+  <arg name="output" default="screen" 
+       doc="로그 출력 (screen/log)"/>
+  
+  <!-- ==================== Node Launch ==================== -->
+  
+  <node name="doosan_robot_control_node" 
+        pkg="doosan_robot_control" 
+        type="doosan_robot_control_node" 
+        output="$(arg output)"
+        required="true">
+    
+    <!-- 파라미터 전달 -->
+    <param name="robot_id" value="$(arg robot_id)"/>
+    <param name="robot_model" value="$(arg model)"/>
+    <param name="host" value="$(arg host)"/>
+    <param name="port" value="$(arg port)"/>
+    <param name="mode" value="$(arg mode)"/>
+    <param name="control_rate" value="$(arg control_rate)"/>
+    <param name="connection_timeout" value="$(arg connection_timeout)"/>
+    <param name="run_demo" value="$(arg run_demo)"/>
+    
+  </node>
+  
+  <!-- ==================== Info Display ==================== -->
+  
+  <node name="doosan_control_info" 
+        pkg="rostopic" 
+        type="rostopic" 
+        args="echo /katech/doosan_status" 
+        output="$(arg output)"
+        if="false"/>  <!-- 기본적으로 비활성화, 필요시 true로 변경 -->
+
+</launch>
+

@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<!--
+  Doosan Robot with DSR Control Launch File
+  
+  이 launch 파일은 dsr_launcher의 dsr_moveit.launch와 함께
+  doosan_robot_control_node를 실행합니다.
+  
+  사용 예시:
+    # 기본 실행 (A0912, Real 모드)
+    roslaunch doosan_robot_control doosan_robot_with_dsr.launch \
+      host:=192.168.137.100
+    
+    # M1013 모델, Virtual 모드
+    roslaunch doosan_robot_control doosan_robot_with_dsr.launch \
+      model:=m1013 mode:=virtual
+-->
+
+<launch>
+  <!-- ==================== Arguments ==================== -->
+  
+  <arg name="ns" default="dsr01"/>
+  <arg name="model" default="a0912"/>
+  <arg name="host" default="192.168.137.100"/>
+  <arg name="port" default="12345"/>
+  <arg name="mode" default="real"/>
+  <arg name="color" default="white"/>
+  <arg name="gripper" default="none"/>
+  <arg name="mobile" default="none"/>
+  
+  <!-- ==================== DSR Control Launch ==================== -->
+  
+  <include file="$(find dsr_launcher)/launch/dsr_moveit.launch">
+    <arg name="ns" value="$(arg ns)"/>
+    <arg name="model" value="$(arg model)"/>
+    <arg name="host" value="$(arg host)"/>
+    <arg name="port" value="$(arg port)"/>
+    <arg name="mode" value="$(arg mode)"/>
+    <arg name="color" value="$(arg color)"/>
+    <arg name="gripper" value="$(arg gripper)"/>
+    <arg name="mobile" value="$(arg mobile)"/>
+  </include>
+  
+  <!-- ==================== Custom Control Node ==================== -->
+  
+  <!-- dsr_control이 시작될 때까지 대기 -->
+  <arg name="wait_time" default="5.0"/>
+  
+  <node name="wait_for_dsr" 
+        pkg="rosservice" 
+        type="rosservice" 
+        args="wait /$(arg ns)$(arg model)/system/get_robot_state $(arg wait_time)"
+        output="screen"/>
+  
+  <!-- Custom Control Node 실행 -->
+  <include file="$(find doosan_robot_control)/launch/doosan_robot_control.launch">
+    <arg name="robot_id" value="$(arg ns)"/>
+    <arg name="model" value="$(arg model)"/>
+    <arg name="host" value="$(arg host)"/>
+    <arg name="port" value="$(arg port)"/>
+    <arg name="mode" value="$(arg mode)"/>
+    <arg name="run_demo" value="false"/>
+  </include>
+
+</launch>
+

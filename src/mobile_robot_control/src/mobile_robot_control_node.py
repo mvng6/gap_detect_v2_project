@@ -23,6 +23,9 @@ from woosh_interface import CommuSettings, NO_PRINT
 from woosh.proto.robot.robot_pb2 import RobotInfo, PoseSpeed
 from woosh.proto.robot.robot_pack_pb2 import Twist
 
+from std_msgs.msg import Bool
+from sensor_msgs.msg import JointState
+
 
 # ==================== 데이터 클래스 ====================
 
@@ -140,11 +143,24 @@ class MobileRobotController:
         self.robot: Optional[WooshRobot] = None
         self.current_pose: Optional[object] = None
         
+        # 협업 상태 플래그
+        self.cobot_done_received = False
+        self.last_joint_state: Optional[JointState] = None
+        
         # ROS 노드 초기화
         rospy.init_node('mobile_robot_control', anonymous=True, disable_signals=True)
         
+        # ROS 토픽 설정
+        self.mobile_ready_pub = rospy.Publisher('/katech/mobile_ready', Bool, queue_size=1, latch=True)
+        self.cobot_done_sub = rospy.Subscriber('/katech/cobot_done', Bool, self._cobot_done_callback)
+        self.joint_state_sub = rospy.Subscriber('/dsr01a0912/joint_states', JointState, self._joint_state_callback)
+        
         rospy.loginfo("🤖 Mobile Robot Controller 초기화 완료")
         rospy.loginfo(f"   연결 대상: {config.ip}:{config.port}")
+        rospy.loginfo("📡 토픽 통신 준비 완료")
+        rospy.loginfo("   - 발행: /katech/mobile_ready")
+        rospy.loginfo("   - 구독: /katech/cobot_done")
+        rospy.loginfo("   - 구독: /dsr01a0912/joint_states")
     
     # ==================== 연결 관리 ====================
     
@@ -211,6 +227,26 @@ class MobileRobotController:
             pose_speed: 로봇의 위치 및 속도 정보
         """
         self.current_pose = pose_speed.pose
+    
+    def _cobot_done_callback(self, msg: Bool) -> None:
+        """
+        협동로봇 완료 메시지 콜백
+        
+        Args:
+            msg: 협동로봇 작업 완료 플래그
+        """
+        if msg.data:
+            rospy.loginfo("✅ 협동로봇 작업 완료 메시지 수신!")
+            self.cobot_done_received = True
+    
+    def _joint_state_callback(self, msg: JointState) -> None:
+        """
+        협동로봇 관절 상태 콜백
+        
+        Args:
+            msg: 관절 상태 메시지
+        """
+        self.last_joint_state = msg
     
     async def get_current_pose(self):
         """
@@ -470,6 +506,64 @@ class MobileRobotController:
         
         return True
     
+    # ==================== 협업 제어 ====================
+    
+    def notify_mobile_ready(self) -> None:
+        """모바일 로봇 이동 완료를 협동로봇에 알림"""
+        rospy.loginfo("📢 협동로봇에 이동 완료 알림 발행...")
+        msg = Bool()
+        msg.data = True
+        self.mobile_ready_pub.publish(msg)
+        rospy.loginfo("✅ 메시지 발행 완료: /katech/mobile_ready")
+    
+    async def wait_for_cobot_completion(self, timeout: float = 60.0) -> bool:
+        """
+        협동로봇 작업 완료 대기
+        
+        Args:
+            timeout: 최대 대기 시간 (초)
+        
+        Returns:
+            성공 여부
+        """
+        rospy.loginfo("⏳ 협동로봇 작업 완료 대기 중...")
+        self.cobot_done_received = False
+        
+        start_time = asyncio.get_event_loop().time()
+        while not self.cobot_done_received:
+            if asyncio.get_event_loop().time() - start_time > timeout:
+                rospy.logerr(f"❌ 타임아웃: {timeout}초 동안 응답 없음")
+                return False
+            
+            await asyncio.sleep(0.1)
+        
+        rospy.loginfo("✅ 협동로봇 작업 완료 확인됨")
+        return True
+    
+    def print_joint_states(self) -> None:
+        """현재 협동로봇 관절 상태 출력"""
+        if self.last_joint_state is None:
+            rospy.logwarn("⚠️ 관절 상태 정보가 없습니다")
+            return
+        
+        rospy.loginfo("=" * 60)
+        rospy.loginfo("🤖 협동로봇 현재 관절 상태:")
+        rospy.loginfo(f"   관절 이름: {self.last_joint_state.name}")
+        
+        if len(self.last_joint_state.position) > 0:
+            rospy.loginfo("   관절 위치 (도):")
+            for i, pos in enumerate(self.last_joint_state.position):
+                joint_name = self.last_joint_state.name[i] if i < len(self.last_joint_state.name) else f"Joint{i}"
+                rospy.loginfo(f"     {joint_name}: {math.degrees(pos):.2f}°")
+        
+        if len(self.last_joint_state.velocity) > 0:
+            rospy.loginfo("   관절 속도 (rad/s):")
+            for i, vel in enumerate(self.last_joint_state.velocity):
+                joint_name = self.last_joint_state.name[i] if i < len(self.last_joint_state.name) else f"Joint{i}"
+                rospy.loginfo(f"     {joint_name}: {vel:.3f} rad/s")
+        
+        rospy.loginfo("=" * 60)
+    
     # ==================== 유틸리티 ====================
     
     @staticmethod
@@ -589,11 +683,34 @@ async def main():
         else:
             # 이동 모드
             rospy.loginfo("\n🎯 정밀 이동 모드 (Odometry 피드백)")
-            await controller.move_distance(
+            result = await controller.move_distance(
                 target_distance=args.distance,
                 speed=args.speed,
                 velocity_config=velocity_config
             )
+            
+            if result.success:
+                rospy.loginfo("\n" + "=" * 60)
+                rospy.loginfo("🤝 협업 시퀀스 시작")
+                rospy.loginfo("=" * 60)
+                
+                # 1단계: 협동로봇에 이동 완료 알림
+                controller.notify_mobile_ready()
+                
+                # 2단계: 협동로봇 작업 완료 대기
+                cobot_success = await controller.wait_for_cobot_completion(timeout=120.0)
+                
+                if cobot_success:
+                    # 3단계: 협동로봇 관절 상태 확인 및 출력
+                    rospy.loginfo("🔍 협동로봇 관절 상태 확인 중...")
+                    await asyncio.sleep(1.0)  # 최신 상태 수신 대기
+                    controller.print_joint_states()
+                    
+                    rospy.loginfo("\n" + "=" * 60)
+                    rospy.loginfo("🎉 전체 협업 시퀀스 완료!")
+                    rospy.loginfo("=" * 60)
+                else:
+                    rospy.logerr("❌ 협동로봇 응답 타임아웃")
         
         # 종료 대기
         rospy.loginfo("\n✅ 작업 완료! Ctrl+C로 종료하세요.")
