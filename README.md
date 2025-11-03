@@ -267,6 +267,23 @@ ping 169.254.128.2
 rosnode info /mobile_robot_ros_node
 ```
 
+### 폴더/파일 생성 시 권한 문제
+
+Docker 컨테이너에서 파일/폴더를 생성할 때 권한 오류가 발생하는 경우:
+
+```bash
+# 문제 증상
+mkdir: cannot create directory 'new_folder': Permission denied
+touch: cannot touch 'new_file.txt': Permission denied
+```
+
+**해결 방법: 호스트에서 소유권 변경**
+```bash
+# 호스트 PC에서 실행 (워크스페이스가 마운트된 경우)
+sudo chown -R $USER:$USER ~/robot_ws
+sudo chmod -R 755 ~/robot_ws
+```
+
 ---
 
 ## 📝 라이선스 및 저작권
