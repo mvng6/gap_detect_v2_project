@@ -260,7 +260,51 @@ void commandCallback(const std_msgs::Int32::ConstPtr& msg, ros::ServiceClient& c
 
 **파일**: `src/mobile_robot_control/src/mobile_robot_ros_node.py`
 
-기존 `mobile_robot_twist_control.py`의 클래스를 활용하여 ROS 노드로 래핑합니다.
+##### 🤔 왜 기존 코드를 그대로 사용할 수 없나요?
+
+**핵심 이유: 두산 로봇은 "서버 형태", 모바일 로봇은 "원샷 실행 형태"**
+
+| 비교 항목 | 두산 로봇 (`move_robot_node`) | 모바일 로봇 (`mobile_robot_twist_control`) |
+|----------|------------------------------|------------------------------------------|
+| **실행 방식** | 서버 형태 (계속 실행) | 원샷 형태 (한 번 실행 후 종료) |
+| **명령 대기** | ✅ `ros::spin()`으로 토픽 구독 | ❌ 명령줄 인자로만 받음 |
+| **ROS 통신** | ✅ 토픽/서비스 활용 | ❌ ROS 독립적 (asyncio만 사용) |
+| **로봇 연결** | ✅ 드라이버가 연결 유지 | ❌ 매번 연결/해제 |
+| **통합 가능** | ✅ 바로 사용 가능 | ❌ 래핑 필요 |
+
+**두산 로봇 구조 (기존 사용 가능):**
+```cpp
+int main() {
+    // 서비스 클라이언트 생성
+    ros::ServiceClient move_client = ...;
+    
+    // 토픽 구독 (명령 대기)
+    ros::Subscriber sub = nh.subscribe("/katech/robot_command", ...);
+    
+    // 무한 대기 - 프로그램이 종료되지 않음 ⭐
+    ros::spin();  
+}
+```
+
+**모바일 로봇 구조 (원샷 실행):**
+```python
+async def main():
+    args = parser.parse_args()  # --distance 0.5
+    controller = MobileRobotTwistController()
+    await controller.connect()
+    await controller.move_distance(args.distance, args.speed)
+    await controller.stop()
+    # 프로그램 종료 ⭐
+
+asyncio.run(main())  # 한 번 실행하고 끝
+```
+
+**결론:** 
+모바일 로봇 코드는 매번 실행/종료되므로, 통합 시스템에서 "계속 대기하며 명령을 받는" 서버 형태로 만들기 위해 ROS 노드로 래핑해야 합니다.
+
+##### 해결 방법: ROS 노드 래퍼 작성
+
+기존 `MobileRobotTwistController` 클래스를 **재사용**하되, ROS 토픽으로 제어하는 래퍼 노드를 만듭니다:
 
 **전체 코드**:
 ```python
