@@ -314,5 +314,3 @@ sudo chmod -R 755 ~/robot_ws
 - ✅ 자동 초기화 및 상태 감지 기능
 - ✅ ROS Topic 기반 통신 구조 확립
 
----
-
