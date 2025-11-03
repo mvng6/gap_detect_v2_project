@@ -13,8 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   sensor_msgs
   geometry_msgs
-  actionlib
-  robot_interfaces
 )
 
 ## System dependencies are found with CMake's conventions
@@ -109,7 +107,6 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES doosan_helper
-  CATKIN_DEPENDS dsr_msgs roscpp std_msgs sensor_msgs geometry_msgs actionlib robot_interfaces
 #  DEPENDS system_lib
 )
 
@@ -143,15 +140,11 @@ add_executable(move_robot_node src/move_robot_node.cpp)
 add_executable(trigger_home_node src/trigger_home_node.cpp)
 add_executable(trigger_zero_node src/trigger_zero_node.cpp)
 add_executable(trigger_one_node src/trigger_one_node.cpp)
-add_executable(cobot_coordinator_node src/cobot_coordinator_node.cpp)
-add_executable(ldj_doosan_action_server src/ldj_doosan_action_server.cpp)
 
 target_link_libraries(move_robot_node ${catkin_LIBRARIES})
 target_link_libraries(trigger_home_node ${catkin_LIBRARIES})
 target_link_libraries(trigger_zero_node ${catkin_LIBRARIES})
 target_link_libraries(trigger_one_node ${catkin_LIBRARIES})
-target_link_libraries(cobot_coordinator_node ${catkin_LIBRARIES})
-target_link_libraries(ldj_doosan_action_server ${catkin_LIBRARIES})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
