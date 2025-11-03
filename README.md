@@ -101,7 +101,7 @@ docker exec -it my_noetic_ws bash
 
 ```bash
 # (작업실 터미널 1)
-roslaunch dsr_launcher dsr_moveit.launch model:=a0912 mode:=real host:=192.168.137.100
+roslaunch dsr_launcher single_robot.launch model:=a0912 mode:=real host:=192.168.137.100
 ```
 **터미널 2: 명령 수신 노드 실행 (토픽 메시지를 받아 로봇 제어 서비스를 호출하는 노드)**
 ```bash
