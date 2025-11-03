@@ -120,8 +120,13 @@ private:
     // 로봇 팔을 움직이는 헬퍼 함수
     bool moveArm(const std::vector<double>& pos)
     {
+        if (pos.size() !=6)
+        {
+            ROS_ERROR("moveArm: pos 벡터는 6개의 요소를 가져야 합니다. 현재 크기: %zu", pos.size());
+            return false;
+        }
         dsr_msgs::MoveJoint srv;
-        srv.request.pos = pos;
+        std::copy(pos.begin(), pos.end(), srv.request.pos.begin());
         srv.request.vel = 30.0;
         srv.request.acc = 60.0;
         srv.request.mode = 0; // MOVE_MODE_ABSOLUTE

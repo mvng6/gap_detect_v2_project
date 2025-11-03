@@ -9,10 +9,10 @@
     기본 연결, 상태 모니터링, ROS 통합 제공.
   </description>
   
-  <maintainer email="robotics@katech.re.kr">KATECH Robotics Team</maintainer>
+  <maintainer email="djlee2@katech.re.kr">root</maintainer>
   <license>MIT</license>
   
-  <author email="robotics@katech.re.kr">KATECH Robotics Team</author>
+  <author email="djlee2@katech.re.kr">root</author>
 
   <buildtool_depend>catkin</buildtool_depend>
 
