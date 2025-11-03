@@ -206,55 +206,138 @@ python3 mobile_robot_twist_control.py --distance 0.2 --speed 0.2
 현재 `move_robot_node`는 명령을 실행만 하고 상태를 발행하지 않습니다.
 상태 발행 기능을 추가해야 합니다.
 
-**수정 방법**:
+**수정 사항 요약**:
+1. 헤더 파일 추가: `#include "std_msgs/String.h"`
+2. 전역 변수 선언: `ros::Publisher status_pub;`
+3. `main()` 함수에서 Publisher 초기화 및 초기 상태 발행
+4. `commandCallback()` 함수에서 각 단계마다 상태 발행
+
+**전체 수정된 코드** (`move_robot_node.cpp`):
 ```cpp
-// 파일 상단에 Publisher 추가
+#include "ros/ros.h"
+#include "std_msgs/Int32.h"     // 토픽 메시지 (방아쇠)
+#include "std_msgs/String.h"    // 상태 발행용 메시지 (추가됨) ⭐
+#include "dsr_msgs/MoveJoint.h" // 서비스 메시지 (총알)
+#include <boost/bind.hpp>       // 콜백 함수에 인자를 넘기기 위해 필요
+
+// 전역 변수: 상태 발행용 Publisher (추가됨) ⭐
 ros::Publisher status_pub;
 
-// main 함수에서 Publisher 초기화
-status_pub = nh.advertise<std_msgs::String>("/doosan/status", 1);
-
-// 초기 상태 발행
-std_msgs::String status_msg;
-status_msg.data = "IDLE";
-status_pub.publish(status_msg);
-
-// commandCallback 함수 내부 수정
+// "방아쇠"가 당겨지면(메시지가 오면) 실행될 함수
 void commandCallback(const std_msgs::Int32::ConstPtr& msg, ros::ServiceClient& client)
 {
-    // ... (기존 코드)
-    
+    // 서비스 메시지(총알) 준비
+    dsr_msgs::MoveJoint srv;
+    bool should_call_service = false;
+
+    // 메시지 값에 따라 다른 자세 설정
+    if (msg->data == 0)
+    {
+        ROS_INFO("Trigger message '0' received. Preparing pose [90, 0, 90, 0, 90, -90]");
+        srv.request.pos = {90.0, 0.0, 90.0, 0.0, 90.0, -90.0};
+        should_call_service = true;
+    }
+    else if (msg->data == 1)
+    {
+        ROS_INFO("Trigger message '1' received. Preparing pose [-90, 0, 90, 0, 90, -90]");
+        srv.request.pos = {-90.0, 0.0, 90.0, 0.0, 90.0, -90.0};
+        should_call_service = true;
+    }
+    else if (msg->data == 99)
+    {
+        ROS_INFO("Trigger message 'home(99)' received. Preparing pose [0, 0, 0, 0, 0, 0]");
+        srv.request.pos = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        should_call_service = true;
+    }
+    else
+    {
+        ROS_WARN("Received unsupported command: %d. Ignoring.", msg->data);
+        should_call_service = false;
+    }
+
+    // 서비스 호출이 필요한 경우에만 실행
     if (should_call_service)
     {
-        // 이동 시작 전 상태 발행
+        // 기타 파라미터 설정 (속도, 가속도 등)
+        srv.request.vel = 30.0;
+        srv.request.acc = 60.0;
+        srv.request.mode = 0; // 0: MOVE_MODE_ABSOLUTE
+        
+        // 이동 시작 전 상태 발행 (추가됨) ⭐
         std_msgs::String status;
         status.data = "MOVING";
         status_pub.publish(status);
-        
-        // 서비스 호출 (기존 코드)
+
+        // 서비스 호출 ("발사")
         ROS_INFO("Calling move_joint service...");
         if (client.call(srv))
         {
+            // 성공 응답 확인
             if(srv.response.success) {
                 ROS_INFO("Service call successful: Robot moved.");
-                // 완료 상태 발행
+                // 완료 상태 발행 (추가됨) ⭐
                 status.data = "COMPLETED";
                 status_pub.publish(status);
             } else {
                 ROS_WARN("Service call reported failure.");
+                // 에러 상태 발행 (추가됨) ⭐
                 status.data = "ERROR";
                 status_pub.publish(status);
             }
         }
         else
         {
-            ROS_ERROR("Failed to call service");
+            ROS_ERROR("Failed to call service /dsr01a0912/motion/move_joint");
+            // 에러 상태 발행 (추가됨) ⭐
             status.data = "ERROR";
             status_pub.publish(status);
         }
     }
 }
+
+int main(int argc, char **argv)
+{
+    // 노드 초기화
+    ros::init(argc, argv, "move_robot_node");
+    ros::NodeHandle nh;
+
+    // 1. 상태 발행용 Publisher 초기화 (추가됨) ⭐
+    status_pub = nh.advertise<std_msgs::String>("/doosan/status", 1);
+    
+    // 초기 상태 발행 (추가됨) ⭐
+    std_msgs::String status_msg;
+    status_msg.data = "IDLE";
+    status_pub.publish(status_msg);
+    ROS_INFO("Initial status published: IDLE");
+
+    // 2. "두산 로봇 서비스용 전화기" 만들기 (Service Client)
+    ros::ServiceClient move_client = nh.serviceClient<dsr_msgs::MoveJoint>("/dsr01a0912/motion/move_joint");
+
+    // 서비스가 켜질 때까지 기다립니다
+    ROS_INFO("Waiting for /dsr01a0912/motion/move_joint service...");
+    move_client.waitForExistence();
+    ROS_INFO("Service server found.");
+
+    // 3. "방아쇠용 귀" 만들기 (Subscriber)
+    ros::Subscriber sub = nh.subscribe<std_msgs::Int32>(
+        "/katech/robot_command", 10, 
+        boost::bind(commandCallback, _1, boost::ref(move_client))
+    );
+
+    ROS_INFO("move_robot_node is ready. Waiting for command on /katech/robot_command topic.");
+
+    // 대기 모드 (콜백 함수가 모든 일을 처리함)
+    ros::spin();
+
+    return 0;
+}
 ```
+
+**주요 변경 사항 (⭐ 표시)**:
+- 헤더에 `std_msgs/String.h` 추가
+- 전역 변수로 `status_pub` 선언
+- `main()` 함수에서 초기 상태 "IDLE" 발행
+- `commandCallback()` 함수에서 "MOVING", "COMPLETED", "ERROR" 상태 발행
 
 #### Step 2: 모바일 로봇 ROS 노드 작성 (새 파일)
 

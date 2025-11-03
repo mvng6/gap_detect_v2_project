@@ -1,7 +1,11 @@
 #include "ros/ros.h"
 #include "std_msgs/Int32.h"     // 토픽 메시지 (방아쇠)
+#include "std_msgs/String.h"    // 상태 발행용 메시지 (추가)
 #include "dsr_msgs/MoveJoint.h" // 서비스 메시지 (총알)
-#include <boost/bind.hpp>      // 콜백 함수에 인자를 넘기기 위해 필요
+#include <boost/bind.hpp>       // 콜백 함수에 인자를 넘기기 위해 필요
+
+// 전역 변수: 상태 발행용 Publisher
+ros::Publisher status_pub;
 
 // "방아쇠"가 당겨지면(메시지가 오면) 실행될 함수
 // msg: 수신된 토픽 메시지 (e.g., 1)
@@ -44,6 +48,11 @@ void commandCallback(const std_msgs::Int32::ConstPtr& msg, ros::ServiceClient& c
         srv.request.vel = 30.0;
         srv.request.acc = 60.0;
         srv.request.mode = 0; // 0: MOVE_MODE_ABSOLUTE
+        
+        // 이동 시작 전 상태 발행
+        std_msgs::String status;
+        status.data = "MOVING";
+        status_pub.publish(status);
 
         // 서비스 호출 ("발사")
         ROS_INFO("Calling move_joint service...");
@@ -52,13 +61,20 @@ void commandCallback(const std_msgs::Int32::ConstPtr& msg, ros::ServiceClient& c
             // 성공 응답 확인
             if(srv.response.success) {
                 ROS_INFO("Service call successful: Robot moved.");
+                // 완료 상태 발행
+                status.data = "COMPLETED";
+                status_pub.publish(status);
             } else {
                 ROS_WARN("Service call reported failure.");
+                status.data = "ERROR";
+                status_pub.publish(status);
             }
         }
         else
         {
             ROS_ERROR("Failed to call service /dsr01a0912/motion/move_joint");
+            status.data = "ERROR";
+            status_pub.publish(status);
         }
     }
 }
@@ -69,7 +85,16 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "move_robot_node");
     ros::NodeHandle nh;
 
-    // 1. "두산 로봇 서비스용 전화기" 만들기 (Service Client)
+    // 1. 상태 발행용 Publisher 초기화
+    status_pub = nh.advertise<std_msgs::String>("/doosan/status", 1);
+    
+    // 초기 상태 발행
+    std_msgs::String status_msg;
+    status_msg.data = "IDLE";
+    status_pub.publish(status_msg);
+    ROS_INFO("Initial status published: IDLE");
+
+    // 2. "두산 로봇 서비스용 전화기" 만들기 (Service Client)
     //    이 노드는 "/dsr01a0912/motion/move_joint" 서비스에 전화를 겁니다.
     ros::ServiceClient move_client = nh.serviceClient<dsr_msgs::MoveJoint>("/dsr01a0912/motion/move_joint");
 
@@ -78,7 +103,7 @@ int main(int argc, char **argv)
     move_client.waitForExistence();
     ROS_INFO("Service server found.");
 
-    // 2. "방아쇠용 귀" 만들기 (Subscriber)
+    // 3. "방아쇠용 귀" 만들기 (Subscriber)
     //    "/katech/robot_command" 토픽을 듣습니다.
     //    메시지가 오면, commandCallback 함수를 실행합니다.
     //    (중요!) boost::bind를 사용해, 콜백 함수에 "전화기"(move_client)를 함께 넘겨줍니다.

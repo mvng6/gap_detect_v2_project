@@ -25,9 +25,17 @@ from woosh.proto.robot.robot_pack_pb2 import Twist
 class MobileRobotTwistController:
     """Twist 방식으로 모바일 로봇의 거리를 제어하는 클래스"""
     
-    def __init__(self, verbose=False):
-        """ROS 노드 및 파라미터 초기화"""
-        rospy.init_node('mobile_robot_twist_control', anonymous=True, disable_signals=True)
+    def __init__(self, verbose=False, init_node=True):
+        """
+        ROS 노드 및 파라미터 초기화
+        
+        Args:
+            verbose: SDK 로그 상세 출력 여부
+            init_node: rospy.init_node() 호출 여부 (다른 노드에서 래핑 시 False)
+        """
+        # 노드 초기화 (선택적)
+        if init_node:
+            rospy.init_node('mobile_robot_twist_control', anonymous=True, disable_signals=True)
         
         # 파라미터 로드
         self.robot_ip = rospy.get_param('~robot_ip', '169.254.128.2')
@@ -38,8 +46,9 @@ class MobileRobotTwistController:
         self.robot = None
         self.current_pose = None  # 현재 위치 저장
         
-        rospy.loginfo("🤖 Twist Controller 초기화 완료")
-        rospy.loginfo(f"   연결 대상: {self.robot_ip}:{self.robot_port}")
+        if init_node:
+            rospy.loginfo("🤖 Twist Controller 초기화 완료")
+            rospy.loginfo(f"   연결 대상: {self.robot_ip}:{self.robot_port}")
     
     async def connect(self):
         """로봇에 연결"""
