@@ -316,4 +316,3 @@ sudo chmod -R 755 ~/robot_ws
 
 ---
 
-**Built with ❤️ by KATECH Smart Manufacturing Technology Research Center**
