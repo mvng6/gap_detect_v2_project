@@ -24,20 +24,20 @@
     </include>
     
     <!-- 2. 두산 로봇 명령 수신 노드 (기존 코드 사용) -->
-    <node name="move_robot_node" pkg="doosan_helper" type="move_robot_node" output="screen"/>
+    <node name="katech_move_robot_node" pkg="doosan_helper" type="move_robot_node" output="screen"/>
     
     
     <!-- ==================== 모바일 로봇 시스템 ==================== -->
     
     <!-- 3. 모바일 로봇 ROS 노드 -->
     <env name="PYTHONPATH" value="$(find mobile_robot_control)/src:$(env PYTHONPATH)" />
-    <node name="mobile_robot_ros_node" pkg="mobile_robot_control" type="move_mobile_robot_node.py" output="screen" />
+    <node name="katech_mobile_robot_ros_node" pkg="mobile_robot_control" type="move_mobile_robot_node.py" output="screen" />
     
     
     <!-- ==================== 중앙 관제 노드 ==================== -->
     
     <!-- 4. 중앙 관제 노드 -->
-    <node name="central_coordinator" pkg="central_coordinator" type="coordinator_node.py" output="screen">
+    <node name="katech_central_coordinator" pkg="central_coordinator" type="coordinator_node.py" output="screen">
         <!-- 파라미터 전달 -->
         <param name="mobile_distance" value="$(arg mobile_distance)"/>
         <param name="mobile_speed" value="$(arg mobile_speed)"/>
