@@ -19,13 +19,13 @@ void commandCallback(const std_msgs::Int32::ConstPtr& msg, ros::ServiceClient& c
     // 메시지 값에 따라 다른 자세 설정
     if (msg->data == 0)
     {
-        ROS_INFO("Trigger message '1' received. Preparing pose [90, 0, 90, 0, 90, -90]");
+        ROS_INFO("Trigger message '0' received. Preparing pose [90, 0, 90, 0, 90, -90]");
         srv.request.pos = {90.0, 0.0, 90.0, 0.0, 90.0, -90.0};
         should_call_service = true;
     }
     else if (msg->data == 1)
     {
-        ROS_INFO("Trigger message '0' received. Preparing pose [-90, 0, 90, 0, 90, -90]");
+        ROS_INFO("Trigger message '1' received. Preparing pose [-90, 0, 90, 0, 90, -90]");
         srv.request.pos = {-90.0, 0.0, 90.0, 0.0, 90.0, -90.0};
         should_call_service = true;
     }
@@ -81,12 +81,12 @@ void commandCallback(const std_msgs::Int32::ConstPtr& msg, ros::ServiceClient& c
 
 int main(int argc, char **argv)
 {
-    // 노드 초기화. 이름: "move_robot_node"
-    ros::init(argc, argv, "move_robot_node");
+    // 노드 초기화. 이름: "katech_move_robot_node"
+    ros::init(argc, argv, "katech_move_robot_node");
     ros::NodeHandle nh;
 
     // 1. 상태 발행용 Publisher 초기화
-    status_pub = nh.advertise<std_msgs::String>("/doosan/status", 1);
+    status_pub = nh.advertise<std_msgs::String>("/katech_doosan/status", 1);
     
     // 초기 상태 발행
     std_msgs::String status_msg;
@@ -104,11 +104,11 @@ int main(int argc, char **argv)
     ROS_INFO("Service server found.");
 
     // 3. "방아쇠용 귀" 만들기 (Subscriber)
-    //    "/katech/robot_command" 토픽을 듣습니다.
+    //    "/katech_doosan/cmd" 토픽을 듣습니다.
     //    메시지가 오면, commandCallback 함수를 실행합니다.
     //    (중요!) boost::bind를 사용해, 콜백 함수에 "전화기"(move_client)를 함께 넘겨줍니다.
     ros::Subscriber sub = nh.subscribe<std_msgs::Int32>(
-        "/katech/robot_command", 10, 
+        "/katech_doosan/cmd", 10, 
         boost::bind(commandCallback, _1, boost::ref(move_client))
     );
 
