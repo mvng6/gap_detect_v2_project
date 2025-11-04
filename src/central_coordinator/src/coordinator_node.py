@@ -30,15 +30,15 @@ class CentralCoordinator:
     STATE_HOMMING = 8
     
     def __init__(self):
-        rospy.init_node('central_coordinator', anonymous=False)
+        rospy.init_node('katech_central_coordinator', anonymous=False)
         
         # Publishers (명령 발행)
-        self.mobile_cmd_pub = rospy.Publisher('/mobile/cmd', Float64MultiArray, queue_size=1)
-        self.doosan_cmd_pub = rospy.Publisher('/katech/robot_command', Int32, queue_size=1)
+        self.mobile_cmd_pub = rospy.Publisher('/katech_mobile/cmd', Float64MultiArray, queue_size=1)
+        self.doosan_cmd_pub = rospy.Publisher('/katech_doosan/cmd', Int32, queue_size=1)
         
         # Subscribers (상태 수신)
-        self.mobile_status_sub = rospy.Subscriber('/mobile/status', String, self.mobile_status_callback)
-        self.doosan_status_sub = rospy.Subscriber('/doosan/status', String, self.doosan_status_callback)
+        self.mobile_status_sub = rospy.Subscriber('/katech_mobile/status', String, self.mobile_status_callback)
+        self.doosan_status_sub = rospy.Subscriber('/katech_doosan/status', String, self.doosan_status_callback)
         
         # 두산 로봇 실제 상태 구독 (드라이버에서 직접 발행)
         self.doosan_robot_state_sub = rospy.Subscriber('/dsr01a0912/state', RobotState, self.doosan_robot_state_callback)
