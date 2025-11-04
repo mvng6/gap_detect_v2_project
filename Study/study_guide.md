@@ -2,6 +2,18 @@
 
 다음 학습 순서는 `integrated_system_code_overview.md`에 정리된 아키텍처를 실제 코드와 연결해 이해하도록 구성되었습니다. 각 단계는 **이해 목표 → 확인할 파일 → 실습 과제** 흐름으로 정리되어 있으니 순차적으로 따라가며 코드를 학습하세요.
 
+## ✅ 진행 현황 체크리스트
+- [x] 1단계: 시스템 전반 구조 파악 (`docs/integrated_system_code_overview.md`)
+- [x] 2단계: 런치 파일 관점 학습 (`Study/launch_file_tutorial.md`)
+- [x] 3단계: 중앙 관제 노드 분석 (`Study/central_coordinator_tutorial.md`)
+- [ ] 4단계: 두산 로봇 명령 노드 분석 (`Study/doosan_helper_tutorial.md` 예정)
+- [ ] 5단계: 두산 드라이버/메시지 인터페이스 이해
+- [ ] 6단계: 모바일 로봇 ROS 노드 분석
+- [ ] 7단계: 모바일 로봇 SDK 래퍼 분석
+- [ ] 8단계: 보조 도구 및 테스트 노드 탐색
+- [ ] 9단계: 문서/README 연계 검토
+- [ ] 10단계: 통합 이해 정리
+
 ---
 
 ## 1. 시스템 전반 구조 파악
