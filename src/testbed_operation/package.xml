@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>mobile_robot_server</name>
+  <name>testbed_operation</name>
   <version>0.0.0</version>
-  <description>The mobile_robot_server package</description>
+  <description>The testbed_operation package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/mobile_robot_server</url> -->
+  <!-- <url type="website">http://wiki.ros.org/testbed_operation</url> -->
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
