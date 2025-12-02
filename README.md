@@ -219,7 +219,7 @@ robot_ws/
 
 ```bash
 # 모바일 로봇 배터리 확인
-rosrun mobile_robot_control battery_check.py
+rosrun testbed_operation battery_check.py 
 ```
 
 출력: 배터리 잔량을 색상 막대 그래프로 표시 (80%↑: 초록, 20~49%: 노란색, 20%↓: 빨강)
