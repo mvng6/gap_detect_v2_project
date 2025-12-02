@@ -162,6 +162,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
+  scripts/battery_check.py
   scripts/testbed_operation_client.py
   scripts/testbed_operation_client_all.py
   scripts/testbed_operation_client_all_with_camera.py

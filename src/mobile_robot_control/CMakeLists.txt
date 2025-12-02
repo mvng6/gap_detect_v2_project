@@ -31,7 +31,6 @@ catkin_install_python(PROGRAMS
   src/mobile_robot_twist_control.py
   src/move_mobile_robot_node.py
   src/mobile_robot_control_node.py
-  src/battery_check.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
