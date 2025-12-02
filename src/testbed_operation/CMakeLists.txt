@@ -59,6 +59,7 @@ add_service_files(
   FILES
   MoveJoint.srv
   MobilePositionTwist.srv
+  QRPoseCorrection.srv
 )
 
 ## Generate actions in the 'action' folder

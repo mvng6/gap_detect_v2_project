@@ -1,0 +1,31 @@
+#____________________________________________________________________________________________
+# Request (로봇 제어 노드 → 카메라 보정 노드)
+#____________________________________________________________________________________________
+bool robot_ready                    # 로봇 이동 완료 플래그
+float64[6] current_joint_pos        # 현재 로봇 관절 각도 [deg]
+string measurement_point_id         # 측정 포인트 ID (예: "A-point1", "B-point2")
+
+---
+
+#____________________________________________________________________________________________
+# Response (카메라 보정 노드 → 로봇 제어 노드)
+#____________________________________________________________________________________________
+bool success                        # 보정 성공 여부
+string message                      # 상태 메시지
+
+# 위치 보정값 (카메라 좌표계 기준)
+float64 delta_x                     # X축 보정량 [mm]
+float64 delta_y                     # Y축 보정량 [mm]
+float64 delta_z                     # Z축 보정량 [mm]
+
+# 자세 보정값 (Rotation Matrix → Euler Angles로 변환)
+float64 delta_rx                    # X축 회전 보정량 [deg]
+float64 delta_ry                    # Y축 회전 보정량 [deg]
+float64 delta_rz                    # Z축 회전 보정량 [deg]
+
+# 원본 Rotation Matrix (3x3 → 9개 요소, row-major order)
+float64[9] rotation_matrix          # [r11, r12, r13, r21, r22, r23, r31, r32, r33]
+
+# QR 코드 인식 정보
+float64 qr_confidence               # QR 코드 인식 신뢰도 [0.0 ~ 1.0]
+float64[3] qr_position              # QR 코드 위치 (카메라 좌표계) [mm]
