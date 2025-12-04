@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+woosh 모바일 로봇(TR-200) 맵 로드 및 제어 스크립트
+
+패키지: ldj_mobile_robot_map
+작성자: LDJ (KATECH)
+설명: 로봇 연결, 맵 로드, 로컬라이제이션, Twist/Navigation 제어
+"""
 
 import rospy
 import asyncio
@@ -11,14 +18,18 @@ from queue import Queue, Empty
 from threading import Thread
 
 # === battery_check.py에서 배터리 출력 함수 가져오기 ===
-# 현재 스크립트 디렉토리 기준으로 testbed_operation/scripts 경로 추가
+# testbed_operation 패키지의 battery_check.py 사용
 script_dir = os.path.dirname(os.path.abspath(__file__))
 battery_check_dir = os.path.join(script_dir, '../../testbed_operation/scripts')
 sys.path.insert(0, os.path.abspath(battery_check_dir))
 
-from battery_check import print_battery_status  # 배터리 상태 출력 함수
+try:
+    from battery_check import print_battery_status  # 배터리 상태 출력 함수
+except ImportError:
+    # battery_check를 찾을 수 없는 경우 간단한 대체 함수 사용
+    def print_battery_status(battery_level):
+        rospy.loginfo(f"🔋 배터리 잔량: {battery_level}%")
 
-from mobile_robot_server.srv import MobilePositionTwist, MobilePositionTwistResponse
 from woosh_robot import WooshRobot
 from woosh_interface import CommuSettings, NO_PRINT, FULL_PRINT
 from woosh.proto.robot.robot_pack_pb2 import Twist, ExecTask
@@ -242,7 +253,7 @@ class SmoothTwistController:
         task_id = 88888  # 고유한 작업 ID
         nav_task = ExecTask(
             task_id=task_id,
-            type=TaskType.kGoToPose,  # 특정 지점으로 이동하는 작업 유형
+            type=TaskType.kCarry,  # 특정 지점으로 이동하는 작업 유형
             direction=TaskDirection.kDirectionUndefined,  # 방향 미정의 (단순 이동)
         )
         nav_task.pose.x = target_x
