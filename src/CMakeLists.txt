@@ -1,7 +1,14 @@
 # toplevel CMakeLists.txt for a catkin workspace
 # catkin/cmake/toplevel.cmake
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.5...3.29)
+
+# === CMake 호환성 정책 설정 (구버전 패키지 지원) ===
+# 새로운 CMake에서 구버전 CMakeLists.txt 호환성 허용
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Minimum CMake policy version")
+if(POLICY CMP0148)
+  cmake_policy(SET CMP0148 OLD)  # FindPythonInterp/FindPythonLibs 사용 허용
+endif()
 
 project(Project)
 

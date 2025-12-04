@@ -20,11 +20,13 @@ from battery_check import print_battery_status  # 배터리 상태 출력 함수
 
 from mobile_robot_server.srv import MobilePositionTwist, MobilePositionTwistResponse
 from woosh_robot import WooshRobot
-from woosh_interface import CommuSettings, NO_PRINT
-from woosh.proto.robot.robot_pack_pb2 import Twist
-from woosh.proto.robot.robot_pb2 import RobotInfo, PoseSpeed, OperationState
-from woosh.proto.robot.robot_pack_pb2 import SwitchMap, SetRobotPose, InitRobot
+from woosh_interface import CommuSettings, NO_PRINT, FULL_PRINT
+from woosh.proto.robot.robot_pack_pb2 import Twist, ExecTask
+from woosh.proto.robot.robot_pb2 import RobotInfo, PoseSpeed, OperationState, TaskProc
+from woosh.proto.robot.robot_pack_pb2 import SwitchMap, SetRobotPose, InitRobot, SwitchControlMode
 from woosh.proto.map.map_pack_pb2 import SceneList
+from woosh.proto.util.task_pb2 import Type as TaskType, State as TaskState, Direction as TaskDirection
+from woosh.proto.util.robot_pb2 import ControlMode
 
 class SmoothTwistController:
     def __init__(self):
@@ -61,6 +63,142 @@ class SmoothTwistController:
         # battery_check.py의 함수를 사용하여 배터리 상태 출력
         print_battery_status(info.battery.power)
         rospy.loginfo("로봇 연결 성공!")
+
+        await self._setup_map()
+    
+    async def _setup_map(self):
+        """네비게이션 설정: 맵 로드 및 로컬라이제이션"""
+        rospy.loginfo("=== 네비게이션 설정 시작 ===")
+
+        # map_loaded 변수를 함수 시작 부분에서 초기화
+        map_loaded = False
+
+        # 1단계: 현재 상태 확인
+        rospy.loginfo("1단계: 현재 상태 확인")
+        pose_speed, ok, msg = await self.robot.robot_pose_speed_req(PoseSpeed(), NO_PRINT, NO_PRINT)
+        if not ok:
+            rospy.logwarn(f"위치 정보 요청 실패: {msg}")
+            return False
+        
+        # 현재 맵 ID를 확인하여 맵 로드 여부 판단
+        current_map_id = pose_speed.map_id if hasattr(pose_speed, 'map_id') else 0
+        if current_map_id != 0:
+            map_loaded = True
+            rospy.loginfo(f"   현재 로드된 맵 ID: {current_map_id}")
+        else:
+            rospy.loginfo("   현재 로드된 맵이 없습니다.")
+
+        # 2단계: 사용 가능한 맵 목록 확인
+        rospy.loginfo("2단계: 사용 가능한 맵 목록 확인")
+        scene_list_req = SceneList()
+        scene_list, ok, msg = await self.robot.scene_list_req(scene_list_req, NO_PRINT, NO_PRINT)
+        
+        available_scenes = []
+        if ok and scene_list and scene_list.scenes:
+            for scene in scene_list.scenes:
+                available_scenes.append(scene.name)
+            rospy.loginfo(f"{len(available_scenes)}개의 장면을 찾았습니다:")
+            for i, scene_name in enumerate(available_scenes, 1):
+                rospy.loginfo(f"   {i}. {scene_name}")
+        else:
+            rospy.logwarn(f"맵 목록 확인 실패: {msg if not ok else '사용 가능한 맵이 없습니다.'}")
+
+        # 3단계: 맵 로드 (맵이 로드되지 않은 경우)
+        if not map_loaded and available_scenes:
+            rospy.loginfo("3단계: 맵 로드")
+            # 3번째 맵(인덱스 2)을 선택
+            target_scene = available_scenes[2]
+            rospy.loginfo(f"   맵 로드 시도: {target_scene}")
+            
+            switch_map = SwitchMap()
+            switch_map.scene_name = target_scene
+            result, ok, msg = await self.robot.switch_map_req(switch_map, NO_PRINT, NO_PRINT)
+            
+            if ok:
+                rospy.loginfo(f"맵 '{target_scene}' 로드 요청 성공")
+                # await asyncio.sleep(3)  # 맵 로드 완료 대기
+                
+                # 맵 로드 확인
+                pose_speed, ok, _ = await self.robot.robot_pose_speed_req(PoseSpeed(), NO_PRINT, NO_PRINT)
+                if ok and pose_speed.map_id != 0:
+                    rospy.loginfo(f"맵 ID가 {pose_speed.map_id}로 업데이트되었습니다.")
+                    map_loaded = True
+                else:
+                    rospy.loginfo("ℹ맵 로드 요청 성공 (로컬라이제이션 대기 중)")
+                    map_loaded = True  # 요청 성공했으므로 4단계 진행
+            else:
+                rospy.logerr(f"맵 로드 실패: {msg}")
+        elif map_loaded:
+            rospy.loginfo("맵이 이미 로드되어 있어 맵 로드를 건너뜁니다.")
+        
+        # 4단계: 로봇 위치 설정 (로컬라이제이션)
+        if map_loaded:
+            rospy.loginfo("4단계: 로봇 위치 설정 (로컬라이제이션)")
+            pose_speed, ok, _ = await self.robot.robot_pose_speed_req(PoseSpeed(), NO_PRINT, NO_PRINT)
+            if ok:
+                # 현재 위치를 맵 상의 위치로 설정
+                set_pose = SetRobotPose()
+                set_pose.pose.x = pose_speed.pose.x
+                set_pose.pose.y = pose_speed.pose.y
+                set_pose.pose.theta = pose_speed.pose.theta
+                
+                result, ok, msg = await self.robot.set_robot_pose_req(set_pose, NO_PRINT, NO_PRINT)
+                if ok:
+                    rospy.loginfo(f"로봇 위치 설정 성공: ({set_pose.pose.x:.2f}, {set_pose.pose.y:.2f}, {set_pose.pose.theta:.2f})")
+                    await asyncio.sleep(2)
+                else:
+                    rospy.logwarn(f"로봇 위치 설정 실패: {msg}")
+
+        # 5단계: 로봇 초기화
+        rospy.loginfo("5단계: 로봇 초기화")
+        pose_speed, ok, _ = await self.robot.robot_pose_speed_req(PoseSpeed(), NO_PRINT, NO_PRINT)
+        if ok:
+            init_robot = InitRobot()
+            init_robot.is_record = False
+            init_robot.pose.x = pose_speed.pose.x if pose_speed else 0.0
+            init_robot.pose.y = pose_speed.pose.y if pose_speed else 0.0
+            init_robot.pose.theta = pose_speed.pose.theta if pose_speed else 0.0
+            
+            result, ok, msg = await self.robot.init_robot_req(init_robot, NO_PRINT, NO_PRINT)
+            if ok:
+                rospy.loginfo(f"✅ 로봇 초기화 성공: ({init_robot.pose.x:.2f}, {init_robot.pose.y:.2f}, {init_robot.pose.theta:.2f})")
+                await asyncio.sleep(2)
+            else:
+                rospy.logwarn(f"⚠️ 로봇 초기화 실패: {msg}")
+        
+        # 6단계: 제어 모드를 자동 모드로 설정
+        rospy.loginfo("6단계: 제어 모드를 자동 모드로 설정")
+        switch_mode = SwitchControlMode()
+        switch_mode.mode = ControlMode.kAuto
+        result, ok, msg = await self.robot.switch_control_mode_req(switch_mode, NO_PRINT, NO_PRINT)
+        if ok:
+            rospy.loginfo("✅ 자동 제어 모드 설정 성공")
+            await asyncio.sleep(2)
+        else:
+            rospy.logwarn(f"⚠️ 제어 모드 설정 실패: {msg}")
+        
+        # 최종 상태 확인
+        rospy.loginfo("최종 상태 확인")
+        state, ok, msg = await self.robot.robot_operation_state_req(OperationState(), NO_PRINT, NO_PRINT)
+        if ok:
+            # 디버그: state.robot과 state.nav 값 직접 출력
+            rospy.loginfo(f"[DEBUG] state.robot = {state.robot} (이진: {bin(state.robot)})")
+            rospy.loginfo(f"[DEBUG] state.nav = {state.nav} (이진: {bin(state.nav)})")
+            rospy.loginfo(f"[DEBUG] kTaskable 값 = {OperationState.RobotBit.kTaskable}")
+            rospy.loginfo(f"[DEBUG] state.robot & kTaskable = {state.robot & OperationState.RobotBit.kTaskable}")
+            
+            if state.robot & OperationState.RobotBit.kTaskable:
+                rospy.loginfo("✅ 로봇이 작업을 받을 수 있는 상태입니다.")
+            else:
+                rospy.loginfo("ℹ️ 로봇이 아직 Taskable 상태가 아니지만, 작업 수행은 가능할 수 있습니다.")
+            
+            if state.nav & OperationState.NavBit.kImpede:
+                rospy.logwarn("⚠️ 장애물이 감지되었습니다.")
+            else:
+                rospy.loginfo("✅ 네비게이션 경로가 깨끗합니다.")
+        
+        rospy.loginfo("=== 네비게이션 설정 완료 ===")
+        return True
 
     async def _move_exact_distance(self, distance):
         if abs(distance) < 0.005:

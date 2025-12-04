@@ -1,0 +1,89 @@
+# =============================================================================
+# Mobile LiDAR Control - Parameter Configuration
+# =============================================================================
+# 이 파일은 mobile_lidar_control 패키지의 ROS 파라미터를 정의합니다.
+# 사용 시 rosparam load 또는 launch 파일에서 로드하세요.
+# =============================================================================
+
+mobile_lidar_control:
+  # -------------------------------------------------------------------------
+  # LiDAR Sensor Configuration
+  # -------------------------------------------------------------------------
+  lidar:
+    topic: "/scan"                    # LiDAR 스캔 토픽명
+    frame_id: "laser_frame"           # LiDAR 좌표계 프레임 ID
+    min_range: 0.1                    # 최소 감지 거리 (m)
+    max_range: 10.0                   # 최대 감지 거리 (m)
+    angle_min: -3.14159               # 최소 스캔 각도 (rad)
+    angle_max: 3.14159                # 최대 스캔 각도 (rad)
+
+  # -------------------------------------------------------------------------
+  # Robot Base Configuration
+  # -------------------------------------------------------------------------
+  robot:
+    base_frame: "base_link"           # 로봇 베이스 프레임 ID
+    odom_frame: "odom"                # 오도메트리 프레임 ID
+    odom_topic: "/odom"               # 오도메트리 토픽명
+    cmd_vel_topic: "/cmd_vel"         # 속도 명령 토픽명
+
+  # -------------------------------------------------------------------------
+  # Motion Control Parameters
+  # -------------------------------------------------------------------------
+  control:
+    # Velocity Limits
+    max_linear_vel: 0.5               # 최대 선속도 (m/s)
+    min_linear_vel: 0.05              # 최소 선속도 (m/s)
+    max_angular_vel: 1.0              # 최대 각속도 (rad/s)
+    min_angular_vel: 0.1              # 최소 각속도 (rad/s)
+    
+    # Acceleration Limits
+    max_linear_acc: 0.3               # 최대 선가속도 (m/s^2)
+    max_angular_acc: 0.5              # 최대 각가속도 (rad/s^2)
+    
+    # Control Rate
+    control_rate: 10.0                # 제어 루프 주기 (Hz)
+
+  # -------------------------------------------------------------------------
+  # Position Correction Parameters
+  # -------------------------------------------------------------------------
+  correction:
+    # Tolerance Settings
+    position_tolerance: 0.01          # 위치 허용 오차 (m)
+    angle_tolerance: 0.02             # 각도 허용 오차 (rad)
+    
+    # PID Gains for Linear Motion
+    linear_kp: 1.0                    # 선속도 P 게인
+    linear_ki: 0.0                    # 선속도 I 게인
+    linear_kd: 0.1                    # 선속도 D 게인
+    
+    # PID Gains for Angular Motion
+    angular_kp: 1.5                   # 각속도 P 게인
+    angular_ki: 0.0                   # 각속도 I 게인
+    angular_kd: 0.1                   # 각속도 D 게인
+    
+    # LiDAR-based Correction
+    use_lidar_correction: true        # LiDAR 기반 보정 사용 여부
+    correction_interval: 0.5          # 보정 주기 (s)
+
+  # -------------------------------------------------------------------------
+  # Visualization (Rviz) Configuration
+  # -------------------------------------------------------------------------
+  visualization:
+    enable: true                      # 시각화 활성화 여부
+    marker_topic: "/visualization_marker"  # 마커 토픽명
+    marker_scale: 0.1                 # 마커 크기
+    marker_lifetime: 1.0              # 마커 지속 시간 (s)
+    
+    # Color Settings (RGBA)
+    target_color: [0.0, 1.0, 0.0, 1.0]    # 목표 위치 색상 (Green)
+    current_color: [0.0, 0.0, 1.0, 1.0]   # 현재 위치 색상 (Blue)
+    path_color: [1.0, 0.5, 0.0, 0.8]      # 경로 색상 (Orange)
+
+  # -------------------------------------------------------------------------
+  # Debug Configuration
+  # -------------------------------------------------------------------------
+  debug:
+    verbose: false                    # 상세 로그 출력 여부
+    log_level: "INFO"                 # 로그 레벨 (DEBUG, INFO, WARN, ERROR)
+    publish_debug_topics: false       # 디버그 토픽 발행 여부
+
