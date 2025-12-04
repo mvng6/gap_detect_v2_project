@@ -169,6 +169,7 @@ catkin_install_python(PROGRAMS
   scripts/aruco_pose.py
   scripts/zivid_capture.py
   scripts/qr_pose_correction_server_test.py  
+  scripts/ldj_load_map.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

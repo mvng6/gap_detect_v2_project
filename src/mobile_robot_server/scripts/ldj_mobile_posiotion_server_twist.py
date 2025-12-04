@@ -22,8 +22,9 @@ from mobile_robot_server.srv import MobilePositionTwist, MobilePositionTwistResp
 from woosh_robot import WooshRobot
 from woosh_interface import CommuSettings, NO_PRINT
 from woosh.proto.robot.robot_pack_pb2 import Twist
-from woosh.proto.robot.robot_pb2 import RobotInfo
-
+from woosh.proto.robot.robot_pb2 import RobotInfo, PoseSpeed, OperationState
+from woosh.proto.robot.robot_pack_pb2 import SwitchMap, SetRobotPose, InitRobot
+from woosh.proto.map.map_pack_pb2 import SceneList
 
 class SmoothTwistController:
     def __init__(self):
