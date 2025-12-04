@@ -66,7 +66,7 @@ def main():
     dsr_acc = 30.0
     dsr_time = 0.0
 
-    for i in range(2):
+    for i in range(4):
         # 1. DSR로봇 측정 초기 위치 이동
         target_joint = [90.0, 0.0, 90.0, 0.0, 90.0, -90.0]  # 홈 포지션 예시
         if not dsr_move_joint(

@@ -22,6 +22,59 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-catkin-tools \
     && rm -rf /var/lib/apt/lists/* # 이미지 용량 줄이기
 
+##############################################################
+##############################################################
+# Zivid SDK (Ubuntu 20.04)
+###############################
+###############################
+# OpenCL (CPU, pocl)
+###############################
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ocl-icd-libopencl1 \
+    pocl-opencl-icd \
+    clinfo \
+ && rm -rf /var/lib/apt/lists/*
+###############################
+# Zivid CPU-only 설정
+###############################
+RUN mkdir -p /root/.config/Zivid/API && \
+    printf "__version__:\n    serializer: 1\n    data: 19\nConfiguration:\n    ComputeDevice:\n        Type: CPU\n        AllowUnsupported: yes\n" \
+    > /root/.config/Zivid/API/Config.yml
+
+ARG ZIVID_VERSION=2.17.1+7516d437-1
+
+RUN set -eux; \
+    mkdir -p /tmp/Zivid && cd /tmp/Zivid && \
+    wget -q \
+      https://downloads.zivid.com/sdk/releases/${ZIVID_VERSION}/u20/amd64/zivid_${ZIVID_VERSION}_amd64.deb \
+      https://downloads.zivid.com/sdk/releases/${ZIVID_VERSION}/u20/amd64/zivid-studio_${ZIVID_VERSION}_amd64.deb \
+      https://downloads.zivid.com/sdk/releases/${ZIVID_VERSION}/u20/amd64/zivid-tools_${ZIVID_VERSION}_amd64.deb \
+      https://downloads.zivid.com/sdk/releases/${ZIVID_VERSION}/u20/amd64/zivid-genicam_${ZIVID_VERSION}_amd64.deb \
+    && apt-get update \
+    && apt-get install -y ./zivid_${ZIVID_VERSION}_amd64.deb \
+                          ./zivid-studio_${ZIVID_VERSION}_amd64.deb \
+                          ./zivid-tools_${ZIVID_VERSION}_amd64.deb \
+                          ./zivid-genicam_${ZIVID_VERSION}_amd64.deb \
+    && rm -rf /var/lib/apt/lists/* /tmp/Zivid
+# 4.x. Python3.8용 pip, venv 설치 + 기본 패키지 설치
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pip \
+    python3-venv \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# 4.y. Python 패키지 설치 (zivid, opencv, numpy)
+#     (주의: 여기서는 시스템 python3.8에 설치합니다)
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir \
+        zivid \
+        opencv-python \
+        numpy
+######################################################################
+##############################################################
+
+
+
 # 4. Docker CLI 설치 (Docker-in-Docker용 "전화기")
 RUN mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
