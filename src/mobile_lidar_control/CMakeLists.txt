@@ -75,7 +75,8 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/lidar_subscriber.py
   scripts/twist_motion_controller.py
-  # scripts/lidar_motion_corrector.py
+  scripts/lidar_motion_corrector.py
+  scripts/lidar_corrected_mover.py
   # scripts/rviz_publisher.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

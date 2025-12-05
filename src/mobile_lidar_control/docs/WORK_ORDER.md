@@ -191,59 +191,141 @@ string message
 
 **목표**: LiDAR 센서값을 활용하여 실제 이동 거리를 측정하고 보정
 
-**보정 알고리즘 선택지**:
-
-| 방식 | 장점 | 단점 | 적용 환경 |
-|------|------|------|----------|
-| **Wall Following** | 구현 간단, 안정적 | 벽 필요 | 복도, 실내 |
-| **Scan Matching (ICP)** | 정확도 높음 | 계산량 많음 | 범용 |
-| **Feature-based** | 특징점 기반 정밀도 | 특징점 필요 | 구조화된 환경 |
-| **단방향 거리 모니터링** | 가장 간단 | 정확도 제한 | 직선 이동 |
-
-**권장 구현 (Phase 3-1): 단방향 거리 모니터링**
-```python
-class LidarMotionCorrector:
-    """전방/후방 LiDAR 거리를 모니터링하여 이동 거리 측정"""
-    
-    def __init__(self):
-        self.front_distance_initial = None
-        self.front_distance_current = None
-        
-    def start_measurement(self, scan_data: LaserScan):
-        """이동 시작 시 기준 거리 저장"""
-        self.front_distance_initial = self._get_front_distance(scan_data)
-        
-    def get_traveled_distance(self, scan_data: LaserScan) -> float:
-        """현재까지 이동한 거리 계산"""
-        self.front_distance_current = self._get_front_distance(scan_data)
-        return self.front_distance_initial - self.front_distance_current
-        
-    def _get_front_distance(self, scan_data: LaserScan) -> float:
-        """전방 중앙 거리 추출 (필터링 적용)"""
-        center_idx = len(scan_data.ranges) // 2
-        front_ranges = scan_data.ranges[center_idx-5:center_idx+5]
-        # inf, nan 필터링 후 중앙값 반환
-        valid_ranges = [r for r in front_ranges 
-                       if scan_data.range_min < r < scan_data.range_max]
-        return np.median(valid_ranges) if valid_ranges else float('inf')
+**로봇 LiDAR 배치**:
+```
+        전진 방향 →
+    ┌─────────────────┐
+    │  [LiDAR 1]      │  ← 왼쪽 앞 (전진 시 사용)
+    │                 │
+    │     로봇 본체    │
+    │                 │
+    │          [LiDAR 2]│  ← 오른쪽 뒤 (후진 시 사용)
+    └─────────────────┘
 ```
 
-**보정 로직 통합**:
+**구현 항목**:
+- [x] 단일 LiDAR 거리 모니터링 방식 구현 ✅ (2025-12-04)
+- [x] 전진/후진 방향별 LiDAR 선택 로직 ✅ (2025-12-04)
+- [x] inf/nan 필터링 및 이상치 제거 ✅ (2025-12-04)
+- [x] ROS 서비스 인터페이스 ✅ (2025-12-04)
+- [x] 디버깅용 토픽 발행 ✅ (2025-12-04)
+
+**서비스 목록**:
+| 서비스 | 타입 | 설명 |
+|--------|------|------|
+| `/mobile_lidar_control/start_measurement` | `Trigger` | 측정 시작 |
+| `/mobile_lidar_control/stop_measurement` | `Trigger` | 측정 종료 및 결과 반환 |
+
+**토픽 목록**:
+| 토픽 | 타입 | 설명 |
+|------|------|------|
+| `/mobile_lidar_control/corrected_distance` | `Float32` | 보정된 이동 거리 |
+| `/mobile_lidar_control/front_distance` | `Float32` | 현재 전방 거리 |
+| `/mobile_lidar_control/rear_distance` | `Float32` | 현재 후방 거리 |
+
+**보정 로직**:
 ```
 이동 시작
+    │
+    ├─▶ 방향 판단 (전진/후진)
+    │       │
+    │       ├─▶ 전진: 왼쪽 앞 LiDAR 사용
+    │       └─▶ 후진: 오른쪽 뒤 LiDAR 사용
     │
     ├─▶ 초기 LiDAR 거리 측정 (d₀)
     │
     ├─▶ Twist 명령으로 이동
     │       │
-    │       ├─▶ 시간 기반 추정 거리: d_est = v × t
-    │       │
     │       └─▶ LiDAR 기반 실측 거리: d_real = d₀ - d_current
     │
-    ├─▶ 오차 계산: error = d_target - d_real
-    │
-    └─▶ 보정 이동 또는 완료
+    └─▶ 측정 종료 및 결과 반환
 ```
+
+---
+
+### Phase 3.5: 통합 노드 - LiDAR 보정 이동 제어
+
+**파일**: `scripts/lidar_corrected_mover.py`
+
+**목표**: LiDAR 보정과 Twist 이동 제어를 통합하여 정밀 위치 이동 구현
+
+**핵심 기능**:
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    LiDAR Corrected Mover (통합 노드)                 │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  [입력]                                                             │
+│    • /mobile_lidar/scan (LiDAR 데이터)                              │
+│    • /mobile_lidar_control/move_with_correction 서비스 호출         │
+│                                                                     │
+│  [처리 흐름]                                                        │
+│    1. 초기 LiDAR 거리 측정 (d₀)                                     │
+│    2. 사다리꼴 속도 프로파일로 이동                                  │
+│    3. 실시간 LiDAR 거리 모니터링                                    │
+│    4. 목표 거리 도달 시 정지                                        │
+│    5. 오차 > 허용치이면 보정 이동 (최대 3회)                        │
+│    6. 완료                                                          │
+│                                                                     │
+│  [출력]                                                             │
+│    • /mobile_lidar_control/traveled_distance (현재 이동 거리)       │
+│    • /mobile_lidar_control/remaining_distance (남은 거리)           │
+│    • /mobile_lidar_control/is_moving (이동 상태)                    │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**구현 항목**:
+- [x] LiDAR 구독 + Twist 제어 통합 ✅ (2025-12-05)
+- [x] 사다리꼴 속도 프로파일 ✅ (2025-12-05)
+- [x] 실시간 LiDAR 기반 거리 모니터링 ✅ (2025-12-05)
+- [x] 자동 보정 이동 (최대 3회) ✅ (2025-12-05)
+- [x] 비상 정지 기능 ✅ (2025-12-05)
+
+**서비스 목록**:
+| 서비스 | 타입 | 설명 |
+|--------|------|------|
+| `/mobile_lidar_control/move_with_correction` | `MoveDistance` | LiDAR 보정 이동 |
+| `/mobile_lidar_control/emergency_stop` | `Empty` | 비상 정지 |
+
+**토픽 목록**:
+| 토픽 | 타입 | 설명 |
+|------|------|------|
+| `/mobile_lidar_control/traveled_distance` | `Float32` | 현재까지 이동 거리 |
+| `/mobile_lidar_control/remaining_distance` | `Float32` | 남은 거리 |
+| `/mobile_lidar_control/is_moving` | `Bool` | 이동 중 여부 |
+
+**동작 시퀀스**:
+```
+서비스 호출: move_with_correction(distance=0.5)
+    │
+    ├─▶ [1] 초기 LiDAR 거리 측정
+    │       └─▶ d₀ = 2.000m (전방)
+    │
+    ├─▶ [2] 사다리꼴 이동 (가속→정속→감속)
+    │       └─▶ 실시간 모니터링: traveled = d₀ - d_current
+    │
+    ├─▶ [3] 목표 도달 시 정지
+    │       └─▶ traveled = 0.498m (오차: 2mm)
+    │
+    ├─▶ [4] 보정 필요 여부 판단
+    │       └─▶ |오차| > 5mm? → 보정 이동
+    │
+    └─▶ [5] 완료 (성공: 0.5002m 이동, 오차: 0.2mm)
+```
+
+**ROS 파라미터**:
+| 파라미터 | 기본값 | 설명 |
+|----------|--------|------|
+| `~robot_ip` | 169.254.186.165 | 로봇 IP |
+| `~robot_port` | 5480 | 로봇 포트 |
+| `~scan_topic` | /mobile_lidar/scan | LiDAR 토픽 |
+| `~max_linear_vel` | 0.12 | 최대 선속도 (m/s) |
+| `~linear_accel` | 0.25 | 가속도 (m/s²) |
+| `~linear_decel` | 0.50 | 감속도 (m/s²) |
+| `~position_tolerance` | 0.005 | 위치 허용 오차 (m) |
+| `~correction_speed` | 0.03 | 보정 속도 (m/s) |
+| `~max_corrections` | 3 | 최대 보정 횟수 |
 
 ---
 
@@ -290,14 +372,39 @@ mobile_lidar_control/
 ├── scripts/
 │   ├── lidar_subscriber.py            # Phase 1: LiDAR 데이터 획득
 │   ├── twist_motion_controller.py     # Phase 2: Twist 기반 이동 제어
-│   ├── lidar_motion_corrector.py      # Phase 3: LiDAR 기반 보정
+│   ├── lidar_motion_corrector.py      # Phase 3: LiDAR 기반 거리 측정
+│   ├── lidar_corrected_mover.py       # Phase 3.5: 통합 이동 노드 ⭐
 │   └── rviz_publisher.py              # Phase 4: Rviz 시각화
 ├── srv/
-│   └── MobilePositionTwist.srv        # 이동 서비스 정의
+│   └── MoveDistance.srv               # 이동 서비스 정의
 ├── msg/
 │   └── (필요시 커스텀 메시지)
 └── rviz/
     └── mobile_lidar.rviz              # Rviz 설정 파일
+```
+
+### 노드 의존 관계
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         노드 실행 순서                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  [1] lidar_subscriber.py                                            │
+│        │                                                            │
+│        │ WooshRobot SDK → /mobile_lidar/scan                       │
+│        ▼                                                            │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │                                                              │  │
+│  │  [2-A] twist_motion_controller.py  (개별 이동, 보정 없음)    │  │
+│  │              또는                                            │  │
+│  │  [2-B] lidar_corrected_mover.py   (통합 이동, 자동 보정) ⭐  │  │
+│  │                                                              │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  [선택] lidar_motion_corrector.py  (수동 측정/보정)                 │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -489,8 +596,104 @@ rosservice call /mobile_lidar_control/emergency_stop
 
 ---
 
+### 2025-12-04: Phase 3 구현 완료 ✅
+
+**구현 완료 항목:**
+- ✅ `scripts/lidar_motion_corrector.py` 생성
+  - 단일 LiDAR 전/후방 거리 모니터링 방식
+  - 전진 시 왼쪽 앞 LiDAR, 후진 시 오른쪽 뒤 LiDAR 사용
+  - inf/nan 필터링 및 이상치(outlier) 제거
+  - 측정 시작/종료 서비스 제공
+  - 실시간 거리 토픽 발행 (디버깅용)
+
+- ✅ `scripts/test_lidar_motion_corrector.py` 유닛 테스트 생성
+
+**유닛 테스트 결과:**
+```
+Ran 14 tests in 0.001s - OK
+  - 실행: 14, 성공: 14, 실패: 0, 에러: 0
+  - 각도 변환, 거리 계산, 이동 거리, 필터링 테스트 통과
+```
+
+**테스트 방법:**
+```bash
+# 1. 빌드
+cd ~/catkin_ws && catkin_make --force-cmake
+source devel/setup.bash
+
+# 2. LiDAR 구독 노드 실행 (먼저)
+rosrun mobile_lidar_control lidar_subscriber.py
+
+# 3. Motion Corrector 노드 실행
+rosrun mobile_lidar_control lidar_motion_corrector.py
+
+# 4. 현재 거리 확인
+rostopic echo /mobile_lidar_control/front_distance
+rostopic echo /mobile_lidar_control/rear_distance
+
+# 5. 측정 시작/종료
+rosservice call /mobile_lidar_control/start_measurement
+# (로봇 이동 후)
+rosservice call /mobile_lidar_control/stop_measurement
+```
+
+**ROS 파라미터 (Phase 3):**
+| 파라미터 | 기본값 | 설명 |
+|----------|--------|------|
+| `~scan_topic` | /mobile_lidar/scan | LiDAR 토픽 |
+| `~front_angle_min` | -0.26 | 전방 최소 각도 (rad) |
+| `~front_angle_max` | 0.26 | 전방 최대 각도 (rad) |
+| `~rear_angle_min` | 2.88 | 후방 최소 각도 (rad) |
+| `~rear_angle_max` | 3.40 | 후방 최대 각도 (rad) |
+| `~min_valid_points` | 3 | 최소 유효 포인트 수 |
+| `~outlier_threshold` | 0.5 | 이상치 임계값 (m) |
+
+---
+
+### 2025-12-05: Phase 3.5 통합 노드 구현 완료 ✅
+
+**구현 완료 항목:**
+- ✅ `scripts/lidar_corrected_mover.py` 생성
+  - LiDAR 구독 + Twist 제어 통합
+  - 사다리꼴 속도 프로파일 (가속-정속-감속)
+  - 실시간 LiDAR 기반 이동 거리 모니터링
+  - 자동 보정 이동 (최대 3회, 허용 오차 5mm)
+  - 비상 정지 기능
+  - asyncio + ROS 통합 구조
+
+- ✅ `CMakeLists.txt` 업데이트 (스크립트 등록)
+
+**실행 방법:**
+```bash
+# 터미널 1: roscore
+roscore
+
+# 터미널 2: LiDAR 구독 노드 (필수 - 먼저 실행)
+rosrun mobile_lidar_control lidar_subscriber.py
+
+# 터미널 3: 통합 이동 노드
+rosrun mobile_lidar_control lidar_corrected_mover.py
+
+# 터미널 4: 이동 명령
+rosservice call /mobile_lidar_control/move_with_correction "{distance: 0.5}"
+rosservice call /mobile_lidar_control/move_with_correction "{distance: -0.3}"
+
+# 비상 정지
+rosservice call /mobile_lidar_control/emergency_stop
+```
+
+**실시간 모니터링:**
+```bash
+# 이동 거리 모니터링
+rostopic echo /mobile_lidar_control/traveled_distance
+rostopic echo /mobile_lidar_control/remaining_distance
+rostopic echo /mobile_lidar_control/is_moving
+```
+
+---
+
 *작성일: 2025-12-04*
 *작성자: AI Assistant*
 *검토: User (KATECH Robotics Team)*
-*최종 수정: 2025-12-04*
+*최종 수정: 2025-12-05*
 

@@ -66,7 +66,7 @@ class LidarSubscriber:
             LaserScan, 
             queue_size=10
         )
-        
+    
         # === 통계 정보 ===
         self.scan_count = 0
         self.last_scan_time = None
