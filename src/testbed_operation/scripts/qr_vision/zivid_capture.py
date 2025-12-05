@@ -4,7 +4,7 @@ import zivid.experimental.calibration as calib
 import datetime
 import cv2
 import numpy as np
-from PIL import Image
+# from PIL import Image
 import matplotlib.pyplot as plt
 
 def camera_load():

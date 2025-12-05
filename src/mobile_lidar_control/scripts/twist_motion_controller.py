@@ -374,6 +374,7 @@ class TwistMotionController:
         rospy.loginfo("=" * 60)
         rospy.loginfo("Twist Motion Controller 실행 중")
         rospy.loginfo("서비스: /mobile_lidar_control/move_distance")
+        rospy.loginfo("서비스: /mobile_lidar_control/move_distance")
         rospy.loginfo("비상정지: /mobile_lidar_control/emergency_stop")
         rospy.loginfo("=" * 60)
         

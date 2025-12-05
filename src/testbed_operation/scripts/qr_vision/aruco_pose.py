@@ -1,15 +1,13 @@
 import cv2
 import numpy as np
-import sys
-sys.path.append("C:\\Users\\\LEGION\\Desktop\\python_codes_for_image")
+# import sys
 
 # mtx = [[fx, 0, cx],
 #        [0, fy, cy],
 #        [0,  0,  1]]
 
-
 # 왜곡계수 (k1, k2, p1, p2, k3)
-dist_coeffs = np.zeros((5, 1), dtype=np.float32)
+# dist_coeffs = np.zeros((5, 1), dtype=np.float32)
 
 # 1. ArUco 설정
 aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
@@ -129,7 +127,8 @@ def estimate_pose_single_markers(corners, marker_length, intrinsics, dist_coeffs
 #             print("========== Marker ID:", int(ids[i]), "==========")
 #             print("rvec (Rodrigues):", rvec_)
 #             print("tvec (x, y, z) [m]:", tvec_)
-#             print("Rotation matrix R:\n", R)
+#             print("Rotation matrix R:\n",
+ 
 #             print()
 
 #     # 화면 표시
@@ -181,6 +180,7 @@ def get_pose(frame, intrinsics, dist):  # zivid_capture -> snapshot -> get_pose(
         for i in range(len(ids)):
             if rvecs[i] is None:
                 continue
+
 
             # (3,1) 형태로 맞추기
             rvec_ = np.asarray(rvecs[i], dtype=np.float32).reshape(3, 1)

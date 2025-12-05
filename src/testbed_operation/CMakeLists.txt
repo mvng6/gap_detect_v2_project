@@ -166,9 +166,11 @@ catkin_install_python(PROGRAMS
   scripts/testbed_operation_client.py
   scripts/testbed_operation_client_all.py
   scripts/testbed_operation_client_all_with_camera.py
-  scripts/aruco_pose.py
-  scripts/zivid_capture.py
   scripts/qr_pose_correction_server_test.py  
+  scripts/qr_vision/aruco_pose.py
+  scripts/qr_vision/zivid_capture.py
+  
+  
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
